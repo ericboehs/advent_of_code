@@ -1,66 +1,105 @@
+# The first day in the Advent of Code challenges
 module DayOne
+  # Represents the path to the Easter Bunny Headquarters as intercepted by the Elves
   class Path
+    # The four directions of a compass ordered clockwise. Used to determine our heading based on relative
+    # directions (i.e. left and right)
     CARDINAL_DIRECTIONS = %w[N E S W]
-    # @return [Array] Input path you'd like to optomize as direction, distance characters (e.g. L1 or R2)
-    attr_reader :input_path
 
-    # @return [String] Current direction we are traveling (e.g. 'N')
-    attr_accessor :current_cardinal_direction
+    # @return [Array] Input path you'd like to optimize. Each element contains a string with the relative
+    # direction and the distance (e.g. L1 or R22)
+    attr_reader :directions
 
-    # @return [Hash] Distance traveled in each direction
-    attr_accessor :distance_traveled
-
-    attr_accessor :previous_coordinates
-    attr_accessor :current_coordinates
-
-    def initialize input_path
-      @input_path = input_path.map { |ip| { direction: ip[0], distance: ip[1..-1] } }
-      @distance_traveled = Hash.new 0
-      @current_cardinal_direction = 'N'
-      @current_coordinates = [0, 0]
-      @previous_coordinates = []
+    # @param coordinates [Array] The latitude and longitude of your position relative to your starting
+    # position (0, 0)
+    # @return [Integer] The rectilinear distance traveled from 0, 0
+    def self.distance_traveled_for_coordinates coordinates
+      coordinates.map(&:abs).sum
     end
 
-    def shortest
+    # Computes the distance traveled from a starting point and reveals the first coordinate you revisited.
+    #
+    # @param directions [Array] All of the directions from the Easter Bunny Recruiting Document
+    # @see Path#directions
+    def initialize directions
+      self.directions = directions
+      self.current_direction = 'N'
+      self.current_coordinates = [0, 0]
+      self.previous_coordinates = []
+
       travel
-      distance_traveled['N'] - distance_traveled['S'] + distance_traveled['E'] - distance_traveled['W']
+    end
+
+    # @return [Integer] Rectilinear distance traveled from 0, 0 for this Path
+    def shortest
+      self.class.distance_traveled_for_coordinates current_coordinates
+    end
+
+    # @return [Array] Revisited coordinates from 0, 0
+    def first_coordinates_revisited
+      previous_coordinates.detect { |coordinates| previous_coordinates.count(coordinates) > 1 }
     end
 
     private
 
+    attr_accessor :current_direction
+    attr_accessor :current_coordinates
+    attr_accessor :previous_coordinates
+
+    def directions= directions
+      @directions = directions.map do |segment|
+        { direction: segment[0], distance: segment[1..-1].to_i }
+      end
+    end
+
     def travel
-      @travel ||= input_path.each do |step|
-        turn step[:direction]
-        step[:distance].to_i.times do
-          if current_cardinal_direction == 'N'
-            self.current_coordinates = [current_coordinates[0] + 1, current_coordinates[1]]
-          elsif current_cardinal_direction == 'E'
-            self.current_coordinates = [current_coordinates[0], current_coordinates[1] + 1]
-          elsif current_cardinal_direction == 'S'
-            self.current_coordinates = [current_coordinates[0] - 1, current_coordinates[1]]
-          elsif current_cardinal_direction == 'W'
-            self.current_coordinates = [current_coordinates[0], current_coordinates[1] - 1]
-          end
-          self.previous_coordinates << current_coordinates
-        end
-        step step[:distance]
+      @travel ||= directions.each do |segment|
+        turn segment[:direction]
+        step segment[:distance]
       end
     end
 
     def turn relative_direction
-      if relative_direction == "L"
-        self.current_cardinal_direction = CARDINAL_DIRECTIONS[current_cardinal_direction_index - 1]
-      else
-        self.current_cardinal_direction = CARDINAL_DIRECTIONS[current_cardinal_direction_index + 1] || 'N'
-      end
+      self.current_direction =
+        if relative_direction == "L"
+          CARDINAL_DIRECTIONS[current_direction_index - 1]
+        else
+          CARDINAL_DIRECTIONS[current_direction_index + 1] || 'N'
+        end
     end
 
     def step distance
-      self.distance_traveled[current_cardinal_direction] += distance.to_i
+      distance.times do
+        increment_latitude  if current_direction == 'N'
+        increment_longitude if current_direction == 'E'
+        decrement_latitude  if current_direction == 'S'
+        decrement_longitude if current_direction == 'W'
+        save_current_coordinates
+      end
     end
 
-    def current_cardinal_direction_index
-      CARDINAL_DIRECTIONS.index current_cardinal_direction
+    def increment_latitude
+      self.current_coordinates = [current_coordinates[0] + 1, current_coordinates[1]]
+    end
+
+    def decrement_latitude
+      self.current_coordinates = [current_coordinates[0] - 1, current_coordinates[1]]
+    end
+
+    def increment_longitude
+      self.current_coordinates = [current_coordinates[0], current_coordinates[1] + 1]
+    end
+
+    def decrement_longitude
+      self.current_coordinates = [current_coordinates[0], current_coordinates[1] - 1]
+    end
+
+    def save_current_coordinates
+      self.previous_coordinates = previous_coordinates << current_coordinates
+    end
+
+    def current_direction_index
+      CARDINAL_DIRECTIONS.index current_direction
     end
   end
 end
@@ -81,15 +120,13 @@ module DayOne
     end
 
     def test_shortest_distance
-      puts path.shortest
       assert_equal 307, path.shortest
     end
 
-    def test_visit_coordinate_twice
-      path.shortest
-      coordinate = path.previous_coordinates.detect { |e| path.previous_coordinates.count(e) > 1 }
-      puts coordinate.map(&:abs).sum
-      assert_equal 165, coordinate.map(&:abs).sum
+    def test_visit_coordinates_twice
+      coordinate = path.first_coordinates_revisited
+      distance = DayOne::Path.distance_traveled_for_coordinates coordinate
+      assert_equal 165, distance
     end
   end
 end
@@ -98,15 +135,24 @@ end
 __END__
 --- Day 1: No Time for a Taxicab ---
 
-Santa's sleigh uses a very high-precision clock to guide its movements, and the clock's oscillator is regulated by stars. Unfortunately, the stars have been stolen... by the Easter Bunny. To save Christmas, Santa needs you to retrieve all fifty stars by December 25th.
+Santa's sleigh uses a very high-precision clock to guide its movements, and the clock's oscillator is
+regulated by stars. Unfortunately, the stars have been stolen... by the Easter Bunny. To save Christmas, Santa
+needs you to retrieve all fifty stars by December 25th.
 
-Collect stars by solving puzzles. Two puzzles will be made available on each day in the advent calendar; the second puzzle is unlocked when you complete the first. Each puzzle grants one star. Good luck!
+Collect stars by solving puzzles. Two puzzles will be made available on each day in the advent calendar; the
+second puzzle is unlocked when you complete the first. Each puzzle grants one star. Good luck!
 
-You're airdropped near Easter Bunny Headquarters in a city somewhere. "Near", unfortunately, is as close as you can get - the instructions on the Easter Bunny Recruiting Document the Elves intercepted start here, and nobody had time to work them out further.
+You're airdropped near Easter Bunny Headquarters in a city somewhere. "Near", unfortunately, is as close as
+you can get - the instructions on the Easter Bunny Recruiting Document the Elves intercepted start here, and
+nobody had time to work them out further.
 
-The Document indicates that you should start at the given coordinates (where you just landed) and face North. Then, follow the provided sequence: either turn left (L) or right (R) 90 degrees, then walk forward the given number of blocks, ending at a new intersection.
+The Document indicates that you should start at the given coordinates (where you just landed) and face North.
+Then, follow the provided sequence: either turn left (L) or right (R) 90 degrees, then walk forward the given
+number of blocks, ending at a new intersection.
 
-There's no time to follow such ridiculous instructions on foot, though, so you take a moment and work out the destination. Given that you can only walk on the street grid of the city, how far is the shortest path to the destination?
+There's no time to follow such ridiculous instructions on foot, though, so you take a moment and work out the
+destination. Given that you can only walk on the street grid of the city, how far is the shortest path to the
+destination?
 
 For example:
 
@@ -122,8 +168,10 @@ The first half of this puzzle is complete! It provides one gold star: *
 
 --- Part Two ---
 
-Then, you notice the instructions continue on the back of the Recruiting Document. Easter Bunny HQ is actually at the first location you visit twice.
+Then, you notice the instructions continue on the back of the Recruiting Document. Easter Bunny HQ is actually
+at the first location you visit twice.
 
-For example, if your instructions are R8, R4, R4, R8, the first location you visit twice is 4 blocks away, due East.
+For example, if your instructions are R8, R4, R4, R8, the first location you visit twice is 4 blocks away, due
+East.
 
 How many blocks away is the first location you visit twice?
