@@ -5,3 +5,9 @@ Solution for Day 1 of the Advent of Code 2016 in Ruby. Answers to my problem are
 ```
 ruby day_1.rb
 ```
+
+## Running Web Server
+```
+bundle install
+bundle exec rackup
+```
