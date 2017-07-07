@@ -40,11 +40,14 @@ module DayOne
       previous_coordinates.find { |coordinates| previous_coordinates.count(coordinates) > 1 }
     end
 
+    protected
+
+    attr_accessor :current_coordinates
+    attr_accessor :previous_coordinates
+
     private
 
     attr_accessor :current_direction
-    attr_accessor :current_coordinates
-    attr_accessor :previous_coordinates
 
     def directions= directions
       @directions = directions.map do |segment|
@@ -79,23 +82,23 @@ module DayOne
     end
 
     def increment_latitude
-      self.current_coordinates = [current_coordinates[0] + 1, current_coordinates[1]]
+      self.current_coordinates[0] += 1
     end
 
     def decrement_latitude
-      self.current_coordinates = [current_coordinates[0] - 1, current_coordinates[1]]
+      self.current_coordinates[0] -= 1
     end
 
     def increment_longitude
-      self.current_coordinates = [current_coordinates[0], current_coordinates[1] + 1]
+      self.current_coordinates[1] += 1
     end
 
     def decrement_longitude
-      self.current_coordinates = [current_coordinates[0], current_coordinates[1] - 1]
+      self.current_coordinates[1] -= 1
     end
 
     def save_current_coordinates
-      self.previous_coordinates = previous_coordinates << current_coordinates
+      self.previous_coordinates << current_coordinates.dup
     end
 
     def current_direction_index
